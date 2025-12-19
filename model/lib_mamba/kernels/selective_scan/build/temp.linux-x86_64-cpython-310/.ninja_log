@@ -1,0 +1,4 @@
+# ninja log v7
+1	11902	1766140357179613667	/home/beknur/Documents/MobileMamba/model/lib_mamba/kernels/selective_scan/build/temp.linux-x86_64-cpython-310/csrc/selective_scan/cusoflex/selective_scan_core_fwd.o	e2ffa32d251b35f5
+1	17953	1766140357179738080	/home/beknur/Documents/MobileMamba/model/lib_mamba/kernels/selective_scan/build/temp.linux-x86_64-cpython-310/csrc/selective_scan/cusoflex/selective_scan_oflex.o	10ef77700fcb5f89
+1	34798	1766140357179252242	/home/beknur/Documents/MobileMamba/model/lib_mamba/kernels/selective_scan/build/temp.linux-x86_64-cpython-310/csrc/selective_scan/cusoflex/selective_scan_core_bwd.o	f55aefb9431f2f77
