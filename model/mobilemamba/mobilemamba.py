@@ -682,7 +682,7 @@ def MobileMamba_T4(num_classes=1000, pretrained=False, distillation=False, fuse=
 
 
 @MODEL.register_module
-def MobileMamba_S6(num_classes=1000, pretrained=False, distillation=False, fuse=False, pretrained_cfg=None, model_cfg=CFG_MobileMamba_S6, mixer_type="minlstm", rnn_expansion=1.0, rnn_proj_out=None,):
+def MobileMamba_S6(num_classes=1000, pretrained=False, distillation=False, fuse=False, pretrained_cfg=None, model_cfg=CFG_MobileMamba_S6, mixer_type="minlstm", rnn_expansion=2.0, rnn_proj_out=None,):
     model = MobileMamba(num_classes=num_classes,
                         distillation=distillation,
                         mixer_type=mixer_type,
