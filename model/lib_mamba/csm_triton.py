@@ -492,6 +492,11 @@ def cross_scan_fn(x: torch.Tensor, in_channel_first=True, out_channel_first=True
     # x: (B, C, H, W) | (B, H, W, C) | (B, 4, C, H, W) | (B, H, W, 4, C)
     # y: (B, 4, C, L) | (B, L, 4, C)
     # scans: 0: cross scan; 1 unidirectional; 2: bidirectional;
+    if torch.jit.is_scripting() or torch.jit.is_tracing():
+        # TorchScript/tracing path: avoid touching Triton globals or custom autograd.Function
+        _fn = cross_scan1b1_fwd if one_by_one else cross_scan_fwd
+        return _fn(x, in_channel_first, out_channel_first, scans)
+
     CSF = CrossScanTritonF if WITH_TRITON and x.is_cuda and (not force_torch) else CrossScanF
     return CSF.apply(x, in_channel_first, out_channel_first, one_by_one, scans)
 
@@ -501,6 +506,11 @@ def cross_merge_fn(y: torch.Tensor, in_channel_first=True, out_channel_first=Tru
     # y: (B, 4, C, L) | (B, L, 4, C)
     # x: (B, C, H * W) | (B, H * W, C) | (B, 4, C, H * W) | (B, H * W, 4, C)
     # scans: 0: cross scan; 1 unidirectional; 2: bidirectional;
+    if torch.jit.is_scripting() or torch.jit.is_tracing():
+        # TorchScript/tracing path: avoid touching Triton globals or custom autograd.Function
+        _fn = cross_merge1b1_fwd if one_by_one else cross_merge_fwd
+        return _fn(y, in_channel_first, out_channel_first, scans)
+
     CMF = CrossMergeTritonF if WITH_TRITON and y.is_cuda and (not force_torch) else CrossMergeF
     return CMF.apply(y, in_channel_first, out_channel_first, one_by_one, scans)
 
