@@ -13,7 +13,7 @@ import inspect
 import torch
 
 print("Creating model...")
-model = MobileMamba_S6(num_classes=1000, mixer_type="minlstm", rnn_expansion=2)
+model = MobileMamba_S6(num_classes=1000, mixer_type="mamba", rnn_expansion=2)
 model.eval()
 example = torch.randn(1, 3, 224, 224)
 
@@ -34,5 +34,5 @@ mlmodel = ct.convert(
 )
 
 print("Saving model...")
-mlmodel.save("MobileMinLSTM_exp2.mlpackage")
+mlmodel.save("MobileMamba.mlpackage")
 print("✓ Conversion successful!")

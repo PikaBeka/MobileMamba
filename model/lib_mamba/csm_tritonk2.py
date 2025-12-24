@@ -18,9 +18,11 @@ if WITH_TRITON:
         from functools import cached_property
     except:
         warnings.warn("if you are using py37, add this line to functools.py: "
-            "cached_property = lambda func: property(lru_cache()(func))")
+                      "cached_property = lambda func: property(lru_cache()(func))")
 
 # torch implementation ========================================
+
+
 def cross_scan_fwd(x: torch.Tensor, in_channel_first=True, out_channel_first=True, scans=2):
     if in_channel_first:
         B, C, H, W = x.shape
@@ -61,7 +63,8 @@ def cross_merge_fwd(y: torch.Tensor, in_channel_first=True, out_channel_first=Tr
         y = y.view(B, K, D, -1)
         if scans == 0:
             y = y[:, 0:2] + y[:, 2:4].flip(dims=[-1]).view(B, 2, D, -1)
-            y = y[:, 0] + y[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).contiguous().view(B, D, -1)
+            y = y[:, 0] + y[:, 1].view(B, -1, W, H).transpose(dim0=2,
+                                                              dim1=3).contiguous().view(B, D, -1)
         elif scans == 1:
             y = y.sum(1)
         elif scans == 2:
@@ -72,7 +75,8 @@ def cross_merge_fwd(y: torch.Tensor, in_channel_first=True, out_channel_first=Tr
         y = y.view(B, -1, K, D)
         if scans == 0:
             y = y[:, :, 0:2] + y[:, :, 2:4].flip(dims=[1]).view(B, -1, 2, D)
-            y = y[:, :, 0] + y[:, :, 1].view(B, W, H, -1).transpose(dim0=1, dim1=2).contiguous().view(B, -1, D)
+            y = y[:, :, 0] + y[:, :, 1].view(B, W, H, -1).transpose(
+                dim0=1, dim1=2).contiguous().view(B, -1, D)
         elif scans == 1:
             y = y.sum(2)
         elif scans == 2:
@@ -95,7 +99,8 @@ def cross_scan1b1_fwd(x: torch.Tensor, in_channel_first=True, out_channel_first=
                 x[:, 0].flatten(2, 3),
                 x[:, 1].transpose(dim0=2, dim1=3).flatten(2, 3),
                 torch.flip(x[:, 2].flatten(2, 3), dims=[-1]),
-                torch.flip(x[:, 3].transpose(dim0=2, dim1=3).flatten(2, 3), dims=[-1]),
+                torch.flip(x[:, 3].transpose(
+                    dim0=2, dim1=3).flatten(2, 3), dims=[-1]),
             ], dim=1)
         elif scans == 1:
             y = x.flatten(2, 3)
@@ -113,7 +118,8 @@ def cross_scan1b1_fwd(x: torch.Tensor, in_channel_first=True, out_channel_first=
                 x[:, :, :, 0].flatten(1, 2),
                 x[:, :, :, 1].transpose(dim0=1, dim1=2).flatten(1, 2),
                 torch.flip(x[:, :, :, 2].flatten(1, 2), dims=[1]),
-                torch.flip(x[:, :, :, 3].transpose(dim0=1, dim1=2).flatten(1, 2), dims=[1]),
+                torch.flip(x[:, :, :, 3].transpose(
+                    dim0=1, dim1=2).flatten(1, 2), dims=[1]),
             ], dim=2)
         elif scans == 1:
             y = x.flatten(1, 2)
@@ -140,9 +146,11 @@ def cross_merge1b1_fwd(y: torch.Tensor, in_channel_first=True, out_channel_first
         if scans == 0:
             y = torch.stack([
                 y[:, 0],
-                y[:, 1].view(B, -1, W, H).transpose(dim0=2, dim1=3).flatten(2, 3),
+                y[:, 1].view(B, -1, W, H).transpose(dim0=2,
+                                                    dim1=3).flatten(2, 3),
                 torch.flip(y[:, 2], dims=[-1]),
-                torch.flip(y[:, 3].view(B, -1, W, H).transpose(dim0=2, dim1=3).flatten(2, 3), dims=[-1]),
+                torch.flip(y[:, 3].view(
+                    B, -1, W, H).transpose(dim0=2, dim1=3).flatten(2, 3), dims=[-1]),
             ], dim=1)
         elif scans == 1:
             y = y
@@ -159,9 +167,11 @@ def cross_merge1b1_fwd(y: torch.Tensor, in_channel_first=True, out_channel_first
         if scans == 0:
             y = torch.stack([
                 y[:, :, 0],
-                y[:, :, 1].view(B, W, H, -1).transpose(dim0=1, dim1=2).flatten(1, 2),
+                y[:, :, 1].view(B, W, H, -1).transpose(dim0=1,
+                                                       dim1=2).flatten(1, 2),
                 torch.flip(y[:, :, 2], dims=[1]),
-                torch.flip(y[:, :, 3].view(B, W, H, -1).transpose(dim0=1, dim1=2).flatten(1, 2), dims=[1]),
+                torch.flip(y[:, :, 3].view(
+                    B, W, H, -1).transpose(dim0=1, dim1=2).flatten(1, 2), dims=[1]),
             ], dim=2)
         elif scans == 1:
             y = y
@@ -179,6 +189,7 @@ def cross_merge1b1_fwd(y: torch.Tensor, in_channel_first=True, out_channel_first
         y = y.permute(0, 2, 3, 1).contiguous()
 
     return y
+
 
 class CrossScan(torch.nn.Module):
     def __init__(self, in_channel_first=True, out_channel_first=True, one_by_one=False, scans=2):
@@ -207,14 +218,17 @@ class CrossScan(torch.nn.Module):
     def backward(self, ys: torch.Tensor):
         B, C, H, W = self.shape
 
-        ys = ys.view(B, -1, C, H, W) if self.out_channel_first else ys.view(B, H, W, -1, C)
+        ys = ys.view(
+            B, -1, C, H, W) if self.out_channel_first else ys.view(B, H, W, -1, C)
         _fn = cross_merge1b1_fwd if self.one_by_one else cross_merge_fwd
         y = _fn(ys, self.in_channel_first, self.out_channel_first, self.scans)
 
         if self.one_by_one:
-            y = y.view(B, 2, -1, H, W) if self.in_channel_first else y.view(B, H, W, 2, -1)
+            y = y.view(
+                B, 2, -1, H, W) if self.in_channel_first else y.view(B, H, W, 2, -1)
         else:
-            y = y.view(B, -1, H, W) if self.in_channel_first else y.view(B, H, W, -1)
+            y = y.view(
+                B, -1, H, W) if self.in_channel_first else y.view(B, H, W, -1)
 
         return y
 
@@ -254,9 +268,12 @@ class CrossMerge(torch.nn.Module):
 
         _fn = cross_scan1b1_fwd if self.one_by_one else cross_scan_fwd
         x = _fn(x, self.in_channel_first, self.out_channel_first, self.scans)
-        x = x.view(B, 2, C, H, W) if self.out_channel_first else x.view(B, H, W, 2, C)
+        x = x.view(B, 2, C, H, W) if self.out_channel_first else x.view(
+            B, H, W, 2, C)
 
         return x
+
+
 class CrossScanF(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x: torch.Tensor, in_channel_first=True, out_channel_first=True, one_by_one=False, scans=2):
@@ -291,12 +308,14 @@ class CrossScanF(torch.autograd.Function):
         scans = ctx.scans
         B, C, H, W = ctx.shape
 
-        ys = ys.view(B, -1, C, H, W) if out_channel_first else ys.view(B, H, W, -1, C)
+        ys = ys.view(
+            B, -1, C, H, W) if out_channel_first else ys.view(B, H, W, -1, C)
         _fn = cross_merge1b1_fwd if one_by_one else cross_merge_fwd
         y = _fn(ys, in_channel_first, out_channel_first, scans)
 
         if one_by_one:
-            y = y.view(B, 2, -1, H, W) if in_channel_first else y.view(B, H, W, 2, -1)
+            y = y.view(
+                B, 2, -1, H, W) if in_channel_first else y.view(B, H, W, 2, -1)
         else:
             y = y.view(B, -1, H, W) if in_channel_first else y.view(B, H, W, -1)
 
@@ -346,7 +365,8 @@ class CrossMergeF(torch.autograd.Function):
 
         _fn = cross_scan1b1_fwd if one_by_one else cross_scan_fwd
         x = _fn(x, in_channel_first, out_channel_first, scans)
-        x = x.view(B, 2, C, H, W) if out_channel_first else x.view(B, H, W, 2, C)
+        x = x.view(B, 2, C, H, W) if out_channel_first else x.view(
+            B, H, W, 2, C)
 
         return x, None, None, None, None
 
@@ -355,8 +375,8 @@ class CrossMergeF(torch.autograd.Function):
 
 @triton.jit
 def triton_cross_scan_flex_k2(
-    x, # (B, C, H, W) | (B, H, W, C) | (B, 4, C, H, W) | (B, H, W, 4, C)
-    y, # (B, 4, C, H, W) | (B, H, W, 4, C)
+    x,  # (B, C, H, W) | (B, H, W, C) | (B, 4, C, H, W) | (B, H, W, 4, C)
+    y,  # (B, 4, C, H, W) | (B, H, W, 4, C)
     x_layout: tl.constexpr,
     y_layout: tl.constexpr,
     operation: tl.constexpr,
@@ -384,18 +404,20 @@ def triton_cross_scan_flex_k2(
     _mask_hw = _mask_h[:, None] & _mask_w[None, :]
     _for_C = min(DC - i_c * BC, BC)
 
-    HWRoute0 = i_h * BH * DW  + tl.arange(0, BH)[:, None] * DW + i_w * BW + tl.arange(0, BW)[None, :]
+    HWRoute0 = i_h * BH * DW + \
+        tl.arange(0, BH)[:, None] * DW + i_w * BW + tl.arange(0, BW)[None, :]
     # HWRoute1 = i_w * BW * DH + tl.arange(0, BW)[None, :] * DH + i_h * BH + tl.arange(0, BH)[:, None]  # trans
-    HWRoute2 = (NH - i_h - 1) * BH * DW  + (BH - 1 - tl.arange(0, BH)[:, None]) * DW + (NW - i_w - 1) * BW + (BW - 1 - tl.arange(0, BW)[None, :]) + (DH - NH * BH) * DW + (DW - NW * BW) # flip
+    HWRoute2 = (NH - i_h - 1) * BH * DW + (BH - 1 - tl.arange(0, BH)[:, None]) * DW + (NW - i_w - 1) * BW + (
+        BW - 1 - tl.arange(0, BW)[None, :]) + (DH - NH * BH) * DW + (DW - NW * BW)  # flip
     # HWRoute3 = (NW - i_w - 1) * BW * DH  + (BW - 1 - tl.arange(0, BW)[None, :]) * DH + (NH - i_h - 1) * BH + (BH - 1 - tl.arange(0, BH)[:, None]) + (DH - NH * BH) + (DW - NW * BW) * DH  # trans + flip
 
     if scans == 1:
         HWRoute2 = HWRoute0
 
-
     _tmp1 = DC * DH * DW
 
-    y_ptr_base = y + i_b * 4 * _tmp1 + (i_c * BC * DH * DW if y_layout == 0 else i_c * BC)
+    y_ptr_base = y + i_b * 4 * _tmp1 + \
+        (i_c * BC * DH * DW if y_layout == 0 else i_c * BC)
     if y_layout == 0:
         p_y1 = y_ptr_base + HWRoute0
         # p_y2 = y_ptr_base + _tmp1 + HWRoute1
@@ -408,7 +430,8 @@ def triton_cross_scan_flex_k2(
         # p_y4 = y_ptr_base + 3 * DC + HWRoute3 * 4 * DC
 
     if onebyone == 0:
-        x_ptr_base = x + i_b * _tmp1 + (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
+        x_ptr_base = x + i_b * _tmp1 + \
+            (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
         if x_layout == 0:
             p_x = x_ptr_base + HWRoute0
         else:
@@ -434,9 +457,9 @@ def triton_cross_scan_flex_k2(
                 # tl.store(p_x + _idx_x, _y1 + _y2 + _y3 + _y4, mask=_mask_hw)
                 tl.store(p_x + _idx_x, _y1 + _y3, mask=_mask_hw)
 
-
     else:
-        x_ptr_base = x + i_b * 4 * _tmp1 + (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
+        x_ptr_base = x + i_b * 4 * _tmp1 + \
+            (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
         if x_layout == 0:
             p_x1 = x_ptr_base + HWRoute0
             p_x2 = p_x1 + _tmp1
@@ -452,9 +475,11 @@ def triton_cross_scan_flex_k2(
             for idxc in range(_for_C):
                 _idx_x = idxc * DH * DW if x_layout == 0 else idxc
                 _idx_y = idxc * DH * DW if y_layout == 0 else idxc
-                tl.store(p_y1 + _idx_y, tl.load(p_x1 + _idx_x, mask=_mask_hw), mask=_mask_hw)
+                tl.store(p_y1 + _idx_y, tl.load(p_x1 + _idx_x,
+                         mask=_mask_hw), mask=_mask_hw)
                 # tl.store(p_y2 + _idx_y, tl.load(p_x2 + _idx_x, mask=_mask_hw), mask=_mask_hw)
-                tl.store(p_y3 + _idx_y, tl.load(p_x3 + _idx_x, mask=_mask_hw), mask=_mask_hw)
+                tl.store(p_y3 + _idx_y, tl.load(p_x3 + _idx_x,
+                         mask=_mask_hw), mask=_mask_hw)
                 # tl.store(p_y4 + _idx_y, tl.load(p_x4 + _idx_x, mask=_mask_hw), mask=_mask_hw)
         else:
             for idxc in range(_for_C):
@@ -465,10 +490,11 @@ def triton_cross_scan_flex_k2(
                 tl.store(p_x3 + _idx_x, tl.load(p_y3 + _idx_y), mask=_mask_hw)
                 # tl.store(p_x4 + _idx_x, tl.load(p_y4 + _idx_y), mask=_mask_hw)
 
+
 @triton.jit
 def triton_cross_scan_flex_k2(
-    x, # (B, C, H, W) | (B, H, W, C) | (B, 4, C, H, W) | (B, H, W, 4, C)
-    y, # (B, 4, C, H, W) | (B, H, W, 4, C)
+    x,  # (B, C, H, W) | (B, H, W, C) | (B, 4, C, H, W) | (B, H, W, 4, C)
+    y,  # (B, 4, C, H, W) | (B, H, W, 4, C)
     x_layout: tl.constexpr,
     y_layout: tl.constexpr,
     operation: tl.constexpr,
@@ -490,15 +516,18 @@ def triton_cross_scan_flex_k2(
     _mask_hw = _mask_h[:, None] & _mask_w[None, :]
     _for_C = min(DC - i_c * BC, BC)
 
-    HWRoute0 = i_h * BH * DW  + tl.arange(0, BH)[:, None] * DW + i_w * BW + tl.arange(0, BW)[None, :]
-    HWRoute2 = (NH - i_h - 1) * BH * DW  + (BH - 1 - tl.arange(0, BH)[:, None]) * DW + (NW - i_w - 1) * BW + (BW - 1 - tl.arange(0, BW)[None, :]) + (DH - NH * BH) * DW + (DW - NW * BW) # flip
+    HWRoute0 = i_h * BH * DW + \
+        tl.arange(0, BH)[:, None] * DW + i_w * BW + tl.arange(0, BW)[None, :]
+    HWRoute2 = (NH - i_h - 1) * BH * DW + (BH - 1 - tl.arange(0, BH)[:, None]) * DW + (NW - i_w - 1) * BW + (
+        BW - 1 - tl.arange(0, BW)[None, :]) + (DH - NH * BH) * DW + (DW - NW * BW)  # flip
 
     if scans == 1:
         HWRoute2 = HWRoute0
 
     _tmp1 = DC * DH * DW
 
-    y_ptr_base = y + i_b * 4 * _tmp1 + (i_c * BC * DH * DW if y_layout == 0 else i_c * BC)
+    y_ptr_base = y + i_b * 4 * _tmp1 + \
+        (i_c * BC * DH * DW if y_layout == 0 else i_c * BC)
     if y_layout == 0:
         p_y1 = y_ptr_base + HWRoute0
         p_y2 = y_ptr_base + 2 * _tmp1 + HWRoute2
@@ -507,7 +536,8 @@ def triton_cross_scan_flex_k2(
         p_y2 = y_ptr_base + 2 * DC + HWRoute2 * 4 * DC
 
     if onebyone == 0:
-        x_ptr_base = x + i_b * _tmp1 + (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
+        x_ptr_base = x + i_b * _tmp1 + \
+            (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
         if x_layout == 0:
             p_x = x_ptr_base + HWRoute0
         else:
@@ -529,7 +559,8 @@ def triton_cross_scan_flex_k2(
                 tl.store(p_x + _idx_x, _y1 + _y2, mask=_mask_hw)
 
     else:
-        x_ptr_base = x + i_b * 4 * _tmp1 + (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
+        x_ptr_base = x + i_b * 4 * _tmp1 + \
+            (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
         if x_layout == 0:
             p_x1 = x_ptr_base + HWRoute0
             p_x2 = p_x1 + 2 * _tmp1
@@ -541,8 +572,10 @@ def triton_cross_scan_flex_k2(
             for idxc in range(_for_C):
                 _idx_x = idxc * DH * DW if x_layout == 0 else idxc
                 _idx_y = idxc * DH * DW if y_layout == 0 else idxc
-                tl.store(p_y1 + _idx_y, tl.load(p_x1 + _idx_x, mask=_mask_hw), mask=_mask_hw)
-                tl.store(p_y2 + _idx_y, tl.load(p_x2 + _idx_x, mask=_mask_hw), mask=_mask_hw)
+                tl.store(p_y1 + _idx_y, tl.load(p_x1 + _idx_x,
+                         mask=_mask_hw), mask=_mask_hw)
+                tl.store(p_y2 + _idx_y, tl.load(p_x2 + _idx_x,
+                         mask=_mask_hw), mask=_mask_hw)
         else:
             for idxc in range(_for_C):
                 _idx_x = idxc * DH * DW if x_layout == 0 else idxc
@@ -550,10 +583,11 @@ def triton_cross_scan_flex_k2(
                 tl.store(p_x1 + _idx_x, tl.load(p_y1 + _idx_y), mask=_mask_hw)
                 tl.store(p_x2 + _idx_x, tl.load(p_y2 + _idx_y), mask=_mask_hw)
 
+
 @triton.jit
 def triton_cross_scan_flex_k2(
-    x, # (B, C, H, W) | (B, H, W, C) | (B, 4, C, H, W) | (B, H, W, 4, C)
-    y, # (B, 4, C, H, W) | (B, H, W, 4, C)
+    x,  # (B, C, H, W) | (B, H, W, C) | (B, 4, C, H, W) | (B, H, W, 4, C)
+    y,  # (B, 4, C, H, W) | (B, H, W, 4, C)
     x_layout: tl.constexpr,
     y_layout: tl.constexpr,
     operation: tl.constexpr,
@@ -575,15 +609,18 @@ def triton_cross_scan_flex_k2(
     _mask_hw = _mask_h[:, None] & _mask_w[None, :]
     _for_C = min(DC - i_c * BC, BC)
 
-    HWRoute0 = i_h * BH * DW  + tl.arange(0, BH)[:, None] * DW + i_w * BW + tl.arange(0, BW)[None, :]
-    HWRoute2 = (NH - i_h - 1) * BH * DW  + (BH - 1 - tl.arange(0, BH)[:, None]) * DW + (NW - i_w - 1) * BW + (BW - 1 - tl.arange(0, BW)[None, :]) + (DH - NH * BH) * DW + (DW - NW * BW) # flip
+    HWRoute0 = i_h * BH * DW + \
+        tl.arange(0, BH)[:, None] * DW + i_w * BW + tl.arange(0, BW)[None, :]
+    HWRoute2 = (NH - i_h - 1) * BH * DW + (BH - 1 - tl.arange(0, BH)[:, None]) * DW + (NW - i_w - 1) * BW + (
+        BW - 1 - tl.arange(0, BW)[None, :]) + (DH - NH * BH) * DW + (DW - NW * BW)  # flip
 
     if scans == 1:
         HWRoute2 = HWRoute0
 
     _tmp1 = DC * DH * DW
 
-    y_ptr_base = y + i_b * 2 * _tmp1 + (i_c * BC * DH * DW if y_layout == 0 else i_c * BC)
+    y_ptr_base = y + i_b * 2 * _tmp1 + \
+        (i_c * BC * DH * DW if y_layout == 0 else i_c * BC)
     if y_layout == 0:
         p_y1 = y_ptr_base + HWRoute0
         p_y2 = y_ptr_base + 1 * _tmp1 + HWRoute2
@@ -592,7 +629,8 @@ def triton_cross_scan_flex_k2(
         p_y2 = y_ptr_base + 1 * DC + HWRoute2 * 4 * DC
 
     if onebyone == 0:
-        x_ptr_base = x + i_b * _tmp1 + (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
+        x_ptr_base = x + i_b * _tmp1 + \
+            (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
         if x_layout == 0:
             p_x = x_ptr_base + HWRoute0
         else:
@@ -614,7 +652,8 @@ def triton_cross_scan_flex_k2(
                 tl.store(p_x + _idx_x, _y1 + _y2, mask=_mask_hw)
 
     else:
-        x_ptr_base = x + i_b * 4 * _tmp1 + (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
+        x_ptr_base = x + i_b * 4 * _tmp1 + \
+            (i_c * BC * DH * DW if x_layout == 0 else i_c * BC)
         if x_layout == 0:
             p_x1 = x_ptr_base + HWRoute0
             p_x2 = p_x1 + 2 * _tmp1
@@ -639,6 +678,7 @@ def triton_cross_scan_flex_k2(
                 tl.store(p_x1 + _idx_x, _y1, mask=_mask_hw)
                 tl.store(p_x2 + _idx_x, _y2, mask=_mask_hw)
 
+
 class CrossScanTritonFk2(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x: torch.Tensor, in_channel_first=True, out_channel_first=True, one_by_one=False, scans=2):
@@ -655,7 +695,7 @@ class CrossScanTritonFk2(torch.autograd.Function):
         B, C, H, W = int(B), int(C), int(H), int(W)
         BC, BH, BW = 1, 32, 32
         NH, NW, NC = triton.cdiv(H, BH), triton.cdiv(W, BW), triton.cdiv(C, BC)
-        
+
         ctx.in_channel_first = in_channel_first
         ctx.out_channel_first = out_channel_first
         ctx.one_by_one = one_by_one
@@ -663,14 +703,16 @@ class CrossScanTritonFk2(torch.autograd.Function):
         ctx.shape = (B, C, H, W)
         ctx.triton_shape = (BC, BH, BW, NC, NH, NW)
 
-        y = x.new_empty((B, 2, C, H * W)) if out_channel_first else x.new_empty((B, H * W, 2, C))
+        y = x.new_empty(
+            (B, 2, C, H * W)) if out_channel_first else x.new_empty((B, H * W, 2, C))
         triton_cross_scan_flex_k2[(NH * NW, NC, B)](
-            x.contiguous(), y, 
-            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 0, (0 if not one_by_one else 1), scans, 
+            x.contiguous(), y,
+            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 0, (
+                0 if not one_by_one else 1), scans,
             BC, BH, BW, C, H, W, NH, NW
         )
         return y
-        
+
     @staticmethod
     def backward(ctx, y: torch.Tensor):
         in_channel_first = ctx.in_channel_first
@@ -680,13 +722,16 @@ class CrossScanTritonFk2(torch.autograd.Function):
         B, C, H, W = ctx.shape
         BC, BH, BW, NC, NH, NW = ctx.triton_shape
         if one_by_one:
-            x = y.new_empty((B, 2, C, H, W)) if in_channel_first else y.new_empty((B, H, W, 2, C))
+            x = y.new_empty((B, 2, C, H, W)) if in_channel_first else y.new_empty(
+                (B, H, W, 2, C))
         else:
-            x = y.new_empty((B, C, H, W)) if in_channel_first else y.new_empty((B, H, W, C))
-        
+            x = y.new_empty((B, C, H, W)) if in_channel_first else y.new_empty(
+                (B, H, W, C))
+
         triton_cross_scan_flex_k2[(NH * NW, NC, B)](
-            x, y.contiguous(), 
-            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 1, (0 if not one_by_one else 1), scans,
+            x, y.contiguous(),
+            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 1, (
+                0 if not one_by_one else 1), scans,
             BC, BH, BW, C, H, W, NH, NW
         )
         return x, None, None, None, None
@@ -709,16 +754,19 @@ class CrossMergeTritonFk2(torch.autograd.Function):
         ctx.shape = (B, C, H, W)
         ctx.triton_shape = (BC, BH, BW, NC, NH, NW)
         if one_by_one:
-            x = y.new_empty((B, 2, C, H * W)) if in_channel_first else y.new_empty((B, H * W, 2, C))
+            x = y.new_empty(
+                (B, 2, C, H * W)) if in_channel_first else y.new_empty((B, H * W, 2, C))
         else:
-            x = y.new_empty((B, C, H * W)) if in_channel_first else y.new_empty((B, H * W, C))
+            x = y.new_empty(
+                (B, C, H * W)) if in_channel_first else y.new_empty((B, H * W, C))
         triton_cross_scan_flex_k2[(NH * NW, NC, B)](
-            x, y.contiguous(), 
-            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 1, (0 if not one_by_one else 1), scans,
+            x, y.contiguous(),
+            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 1, (
+                0 if not one_by_one else 1), scans,
             BC, BH, BW, C, H, W, NH, NW
         )
         return x
-        
+
     @staticmethod
     def backward(ctx, x: torch.Tensor):
         in_channel_first = ctx.in_channel_first
@@ -727,10 +775,12 @@ class CrossMergeTritonFk2(torch.autograd.Function):
         scans = ctx.scans
         B, C, H, W = ctx.shape
         BC, BH, BW, NC, NH, NW = ctx.triton_shape
-        y = x.new_empty((B, 2, C, H, W)) if out_channel_first else x.new_empty((B, H, W, 2, C))
+        y = x.new_empty((B, 2, C, H, W)) if out_channel_first else x.new_empty(
+            (B, H, W, 2, C))
         triton_cross_scan_flex_k2[(NH * NW, NC, B)](
-            x.contiguous(), y, 
-            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 0, (0 if not one_by_one else 1), scans,
+            x.contiguous(), y,
+            (0 if in_channel_first else 1), (0 if out_channel_first else 1), 0, (
+                0 if not one_by_one else 1), scans,
             BC, BH, BW, C, H, W, NH, NW
         )
         return y, None, None, None, None, None
@@ -741,34 +791,53 @@ def cross_scan_fn_k2(x: torch.Tensor, in_channel_first=True, out_channel_first=T
     # x: (B, C, H, W) | (B, H, W, C) | (B, 2, C, H, W) | (B, H, W, 2, C)
     # y: (B, 2, C, L) | (B, L, 2, C)
     # scans: 0: cross scan; 1 unidirectional; 2: bidirectional;
-    CSF = CrossScanTritonFk2 if WITH_TRITON and x.is_cuda and (not force_torch) else CrossScanF
+    if torch.jit.is_scripting() or torch.jit.is_tracing():
+        _fn = cross_scan1b1_fwd if one_by_one else cross_scan_fwd
+        return _fn(x, in_channel_first, out_channel_first, scans)
+
+    CSF = CrossScanTritonFk2 if WITH_TRITON and x.is_cuda and (
+        not force_torch) else CrossScanF
     return CSF.apply(x, in_channel_first, out_channel_first, one_by_one, scans)
 
 # @torch.compile(options={"triton.cudagraphs": True}, fullgraph=True)
+
+
 def cross_merge_fn_k2(y: torch.Tensor, in_channel_first=True, out_channel_first=True, one_by_one=False, scans=2, force_torch=False):
     # y: (B, 2, C, L) | (B, L, 2, C)
     # x: (B, C, H * W) | (B, H * W, C) | (B, 2, C, H * W) | (B, H * W, 2, C)
     # scans: 0: cross scan; 1 unidirectional; 2: bidirectional;
-    CMF = CrossMergeTritonFk2 if WITH_TRITON and y.is_cuda and (not force_torch) else CrossMergeF
+    if torch.jit.is_scripting() or torch.jit.is_tracing():
+        _fn = cross_merge1b1_fwd if one_by_one else cross_merge_fwd
+        return _fn(y, in_channel_first, out_channel_first, scans)
+
+    CMF = CrossMergeTritonFk2 if WITH_TRITON and y.is_cuda and (
+        not force_torch) else CrossMergeF
     return CMF.apply(y, in_channel_first, out_channel_first, one_by_one, scans)
 
+
 def cross_scan_fn_k2_torch(x: torch.Tensor, in_channel_first=True, out_channel_first=True, one_by_one=False, scans=2, force_torch=False):
-    cross_scan = CrossScan(in_channel_first, out_channel_first, one_by_one, scans)
+    cross_scan = CrossScan(
+        in_channel_first, out_channel_first, one_by_one, scans)
     return cross_scan(x)
 
+
 def cross_merge_fn_k2_torch(y: torch.Tensor, in_channel_first=True, out_channel_first=True, one_by_one=False, scans=2, force_torch=False):
-    cross_merge = CrossMerge(in_channel_first, out_channel_first, one_by_one, scans)
+    cross_merge = CrossMerge(
+        in_channel_first, out_channel_first, one_by_one, scans)
     return cross_merge(y)
 
 # checks =================================================================
 
+
 class CHECK:
     def check_csm_triton():
         B, C, H, W = 2, 192, 56, 57
-        dtype=torch.float16
-        dtype=torch.float32
-        x = torch.randn((B, C, H, W), dtype=dtype, device=torch.device("cuda")).requires_grad_(True)
-        y = torch.randn((B, 2, C, H, W), dtype=dtype, device=torch.device("cuda")).requires_grad_(True)
+        dtype = torch.float16
+        dtype = torch.float32
+        x = torch.randn((B, C, H, W), dtype=dtype,
+                        device=torch.device("cuda")).requires_grad_(True)
+        y = torch.randn((B, 2, C, H, W), dtype=dtype,
+                        device=torch.device("cuda")).requires_grad_(True)
         x1 = x.clone().detach().requires_grad_(True)
         y1 = y.clone().detach().requires_grad_(True)
 
@@ -779,17 +848,20 @@ class CHECK:
                 x.view(B, C, L),
                 torch.transpose(x, dim0=2, dim1=3).contiguous().view(B, C, L),
                 torch.flip(x.contiguous().view(B, C, L), dims=[-1]),
-                torch.flip(torch.transpose(x, dim0=2, dim1=3).contiguous().view(B, C, L), dims=[-1]),
+                torch.flip(torch.transpose(
+                    x, dim0=2, dim1=3).contiguous().view(B, C, L), dims=[-1]),
             ], dim=1).view(B, 4, C, L)
             return xs
-        
+
         def cross_merge(out_y: torch.Tensor):
             B, K, D, H, W = out_y.shape
             L = H * W
             out_y = out_y.view(B, K, D, L)
             inv_y = torch.flip(out_y[:, 2:4], dims=[-1]).view(B, 2, -1, L)
-            wh_y = torch.transpose(out_y[:, 1].view(B, -1, W, H), dim0=2, dim1=3).contiguous().view(B, -1, L)
-            invwh_y = torch.transpose(inv_y[:, 1].view(B, -1, W, H), dim0=2, dim1=3).contiguous().view(B, -1, L)
+            wh_y = torch.transpose(out_y[:, 1].view(
+                B, -1, W, H), dim0=2, dim1=3).contiguous().view(B, -1, L)
+            invwh_y = torch.transpose(inv_y[:, 1].view(
+                B, -1, W, H), dim0=2, dim1=3).contiguous().view(B, -1, L)
             y = out_y[:, 0] + inv_y[:, 0] + wh_y + invwh_y
             return y
 
@@ -798,17 +870,19 @@ class CHECK:
             L = H * W
             xs = torch.stack([
                 x[:, 0].view(B, C, L),
-                torch.transpose(x[:, 1], dim0=2, dim1=3).contiguous().view(B, C, L),
+                torch.transpose(x[:, 1], dim0=2,
+                                dim1=3).contiguous().view(B, C, L),
                 torch.flip(x[:, 2].contiguous().view(B, C, L), dims=[-1]),
-                torch.flip(torch.transpose(x[:, 3], dim0=2, dim1=3).contiguous().view(B, C, L), dims=[-1]),
+                torch.flip(torch.transpose(
+                    x[:, 3], dim0=2, dim1=3).contiguous().view(B, C, L), dims=[-1]),
             ], dim=1).view(B, 2, C, L)
             return xs
-        
+
         def unidi_scan(x):
             B, C, H, W = x.shape
             x = x.view(B, 1, C, H * W).repeat(1, 4, 1, 1)
             return x
-        
+
         def unidi_merge(ys):
             B, K, C, H, W = ys.shape
             return ys.view(B, 4, -1, H * W).sum(1)
@@ -818,7 +892,7 @@ class CHECK:
             x = x.view(B, 1, C, H * W).repeat(1, 2, 1, 1)
             x = torch.cat([x, x.flip(dims=[-1])], dim=1)
             return x
-        
+
         def bidi_merge(ys):
             B, K, D, H, W = ys.shape
             ys = ys.view(B, K, D, -1)
@@ -827,18 +901,24 @@ class CHECK:
 
         if True:
             # res0 = triton.testing.do_bench(lambda :cross_scan(x))
-            res1 = triton.testing.do_bench(lambda :cross_scan_fn_k2(x, True, True, False))
+            res1 = triton.testing.do_bench(
+                lambda: cross_scan_fn_k2(x, True, True, False))
             # res2 = triton.testing.do_bench(lambda :CrossScanTriton.apply(x))
             # res3 = triton.testing.do_bench(lambda :cross_merge(y))
-            res4 = triton.testing.do_bench(lambda :cross_merge_fn_k2(y, True, True, False))
+            res4 = triton.testing.do_bench(
+                lambda: cross_merge_fn_k2(y, True, True, False))
             # res5 = triton.testing.do_bench(lambda :CrossMergeTriton.apply(y))
             # print(res0, res1, res2, res3, res4, res5)
             print(res0, res1, res3, res4)
-            res0 = triton.testing.do_bench(lambda :cross_scan(x).sum().backward())
-            res1 = triton.testing.do_bench(lambda :cross_scan_fn_k2(x, True, True, False).sum().backward())
+            res0 = triton.testing.do_bench(
+                lambda: cross_scan(x).sum().backward())
+            res1 = triton.testing.do_bench(lambda: cross_scan_fn_k2(
+                x, True, True, False).sum().backward())
             # res2 = triton.testing.do_bench(lambda :CrossScanTriton.apply(x).sum().backward())
-            res3 = triton.testing.do_bench(lambda :cross_merge(y).sum().backward())
-            res4 = triton.testing.do_bench(lambda :cross_merge_fn_k2(y, True, True, False).sum().backward())
+            res3 = triton.testing.do_bench(
+                lambda: cross_merge(y).sum().backward())
+            res4 = triton.testing.do_bench(lambda: cross_merge_fn_k2(
+                y, True, True, False).sum().backward())
             # res5 = triton.testing.do_bench(lambda :CrossMergeTriton.apply(y).sum().backward())
             # print(res0, res1, res2, res3, res4, res5)
             print(res0, res1, res3, res4)
@@ -847,14 +927,19 @@ class CHECK:
         for (cs0, cm0, cs1, cm1) in [
             # channel_first -> channel_first
             (cross_scan, cross_merge, cross_scan_fn_k2, cross_merge_fn_k2),
-            (unidi_scan, unidi_merge, lambda x: cross_scan_fn_k2(x, scans=1), lambda x: cross_merge_fn_k2(x, scans=1)),
-            (bidi_scan, bidi_merge, lambda x: cross_scan_fn_k2(x, scans=2), lambda x: cross_merge_fn_k2(x, scans=2)),
-            
+            (unidi_scan, unidi_merge, lambda x: cross_scan_fn_k2(
+                x, scans=1), lambda x: cross_merge_fn_k2(x, scans=1)),
+            (bidi_scan, bidi_merge, lambda x: cross_scan_fn_k2(
+                x, scans=2), lambda x: cross_merge_fn_k2(x, scans=2)),
+
             # flex: BLC->BCL; BCL->BLC; BLC->BLC;
-            (cross_scan, cross_merge, lambda x: cross_scan_fn_k2(x.permute(0, 2, 3, 1), in_channel_first=False), lambda x: cross_merge_fn_k2(x, in_channel_first=False).permute(0, 2, 1)),
-            (cross_scan, cross_merge, lambda x: cross_scan_fn_k2(x, out_channel_first=False).permute(0, 2, 3, 1), lambda x: cross_merge_fn_k2(x.permute(0, 3, 4, 1, 2), out_channel_first=False)),
-            (cross_scan, cross_merge, lambda x: cross_scan_fn_k2(x.permute(0, 2, 3, 1), in_channel_first=False, out_channel_first=False).permute(0, 2, 3, 1), lambda x: cross_merge_fn_k2(x.permute(0, 3, 4, 1, 2), in_channel_first=False, out_channel_first=False).permute(0, 2, 1)),
-            
+            (cross_scan, cross_merge, lambda x: cross_scan_fn_k2(x.permute(0, 2, 3, 1), in_channel_first=False),
+             lambda x: cross_merge_fn_k2(x, in_channel_first=False).permute(0, 2, 1)),
+            (cross_scan, cross_merge, lambda x: cross_scan_fn_k2(x, out_channel_first=False).permute(
+                0, 2, 3, 1), lambda x: cross_merge_fn_k2(x.permute(0, 3, 4, 1, 2), out_channel_first=False)),
+            (cross_scan, cross_merge, lambda x: cross_scan_fn_k2(x.permute(0, 2, 3, 1), in_channel_first=False, out_channel_first=False).permute(
+                0, 2, 3, 1), lambda x: cross_merge_fn_k2(x.permute(0, 3, 4, 1, 2), in_channel_first=False, out_channel_first=False).permute(0, 2, 1)),
+
             # previous
             # (cross_scan, cross_merge, lambda x: CrossScanTriton.apply(x), lambda x: CrossMergeTriton.apply(x)),
             # (unidi_scan, unidi_merge, lambda x: getCSM(1)[0].apply(x), lambda x: getCSM(1)[1].apply(x)),
@@ -893,7 +978,3 @@ class CHECK:
 
 if __name__ == "__main__":
     CHECK.check_csm_triton()
-
-
-
-
